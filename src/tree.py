@@ -1,5 +1,6 @@
 import argparse
 import os
+import pathlib
 import stat
 
 import colorama
@@ -79,17 +80,24 @@ class SysManager:
         Обработка аргументов командной строки
         """
         parser = argparse.ArgumentParser(
-            description='System management program', usage='Script option:')
-        parser.add_argument('-s', '--system', help='system command')
-        parser.add_argument('-c', '--chmod', help='checking access rights')
-        parser.add_argument('-t', '--tree', help='directory tree')
+            description='System management program',
+            usage='Run this script with parameters [-s|-c|-t] PATH. '
+            'To get help use -h or --help')
+        parser.add_argument('-s', '--system', help='execute system command')
+        parser.add_argument('-c', '--chmod', help='check access rights')
+        parser.add_argument('-t', '--tree', help='create folder tree')
         args = parser.parse_args()
         for arg, value in args._get_kwargs():
             if value:
+                path_value = pathlib.Path(value)
+                if not path_value.exists():
+                    print('No such path available')
+                    return
                 func = getattr(SysManager, arg)
-                func(self)
+                func(self, path_value)
 
-    def system(self):
+    def system(self, path):
+        os.chdir(path)
         while (request := input('Shell command: ')) != 'exit':
             result = os.system(request)
             if result != 0:
@@ -97,7 +105,8 @@ class SysManager:
                 return
         print('The work has been completed!')
 
-    def chmod(self):
+    def chmod(self, path):
+        os.chdir(path)
         while (request := input('Enter the path: ')) != 'exit':
             try:
                 print(oct(stat.S_IMODE(os.lstat(request).st_mode))[2:])
@@ -106,9 +115,12 @@ class SysManager:
         else:
             print('The work has been completed!')
 
-    def tree(self):
+    def tree(self, path):
+        os.chdir(path)
+        print(f'Current path is {path}')
         while (request := input('Enter the path: ')) != 'exit':
-            if not os.path.exists(request):
+            request = pathlib.Path(pathlib.Path.cwd() / request)
+            if not request.exists():
                 print('File or directory does not exist!')
             else:
                 my_tree = os.walk(request, topdown=True)
